@@ -3,9 +3,9 @@ package org.example.userauthenticationservice_may.dtos;
 import lombok.Getter;
 import lombok.Setter;
 
-@Setter
 @Getter
-public class LoginRequestDto {
+@Setter
+public class SignupRequestDto {
     private String email;
 
     private String password;
