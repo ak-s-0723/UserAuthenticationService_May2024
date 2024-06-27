@@ -7,10 +7,12 @@ import org.example.userauthenticationservice_may.repositories.UserRepository;
 import org.example.userauthenticationservice_may.services.IAuthService;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.util.MultiValueMap;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
+import org.antlr.v4.runtime.misc.Pair;
 
 @RestController
 @RequestMapping("/auth")
@@ -35,12 +37,12 @@ public class AuthController {
     @PostMapping("/login")
     public ResponseEntity<UserDto> login(@RequestBody LoginRequestDto loginRequestDto) {
         try {
-            User user = authService.login(loginRequestDto.getEmail(), loginRequestDto.getPassword());
-            if (user == null) {
+            Pair<User, MultiValueMap<String,String>> response = authService.login(loginRequestDto.getEmail(), loginRequestDto.getPassword());
+            if (response.a == null) {
                 throw new IllegalArgumentException("Invalid Credentials");
             }
 
-            return new ResponseEntity<UserDto>(from(user),HttpStatus.OK);
+            return new ResponseEntity<UserDto>(from(response.a),response.b,HttpStatus.OK);
         }catch(IllegalArgumentException ex) {
             return new ResponseEntity<>(null,HttpStatus.BAD_REQUEST);
         }
