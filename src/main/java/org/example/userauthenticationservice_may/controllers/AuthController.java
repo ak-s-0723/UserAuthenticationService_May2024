@@ -1,6 +1,7 @@
 package org.example.userauthenticationservice_may.controllers;
 
 
+import org.example.userauthenticationservice_may.Exceptions.AuthenticationFailedException;
 import org.example.userauthenticationservice_may.dtos.*;
 import org.example.userauthenticationservice_may.models.User;
 import org.example.userauthenticationservice_may.repositories.UserRepository;
@@ -60,8 +61,11 @@ public class AuthController {
 
 
     @PostMapping("/validateToken")
-    public void validateToken(@RequestBody ValidateTokenRequestDto validateTokenRequestDto) {
-
+    public void validateToken(@RequestBody ValidateTokenRequestDto validateTokenRequestDto) throws AuthenticationFailedException {
+        Boolean result = authService.validateToken(validateTokenRequestDto.getUserId(), validateTokenRequestDto.getToken());
+        if (!result) {
+            throw new AuthenticationFailedException("Authentication Failed");
+        }
     }
 
     private UserDto from(User user) {

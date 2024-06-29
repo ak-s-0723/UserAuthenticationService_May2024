@@ -1,5 +1,7 @@
 package org.example.userauthenticationservice_may.services;
 
+import io.jsonwebtoken.Claims;
+import io.jsonwebtoken.JwtParser;
 import io.jsonwebtoken.Jwts;
 import io.jsonwebtoken.security.MacAlgorithm;
 import org.antlr.v4.runtime.misc.Pair;
@@ -31,10 +33,13 @@ public class AuthService implements IAuthService {
 
     private SessionRepository sessionRepository;
 
-    public AuthService(UserRepository userRepository,BCryptPasswordEncoder bCryptPasswordEncoder,SessionRepository sessionRepository) {
+    private SecretKey secretKey;
+
+    public AuthService(UserRepository userRepository,BCryptPasswordEncoder bCryptPasswordEncoder,SessionRepository sessionRepository,SecretKey secretKey) {
         this.userRepository = userRepository;
         this.bCryptPasswordEncoder = bCryptPasswordEncoder;
         this.sessionRepository = sessionRepository;
+        this.secretKey = secretKey;
     }
 
     @Override
@@ -83,12 +88,14 @@ public class AuthService implements IAuthService {
         Map<String,Object> jwtData = new HashMap<>();
         jwtData.put("email",user.getEmail());
         jwtData.put("roles",user.getRoles());
-        Long nowInMillis = System.currentTimeMillis();
-        jwtData.put("iat",new Date(nowInMillis));
-        jwtData.put("exp", new Date(nowInMillis+100000));
+        Long iat = System.currentTimeMillis();
+        Long exp = iat+100000000;
+        jwtData.put("iat",iat);
+        jwtData.put("exp", exp);
+        System.out.println("iat = "+ iat);
+        System.out.println("exp = "+exp);
 
-        MacAlgorithm algorithm = Jwts.SIG.HS256;
-        SecretKey secretKey = algorithm.key().build();
+
         //String token = Jwts.builder().content(content).signWith(secretKey).compact();
         String token = Jwts.builder().claims(jwtData).signWith(secretKey).compact();
 
@@ -102,5 +109,30 @@ public class AuthService implements IAuthService {
         headers.add(HttpHeaders.SET_COOKIE,token);
 
         return new Pair<User,MultiValueMap<String,String>>(user,headers);
+    }
+
+    public Boolean validateToken(Long userId, String token) {
+         Optional<Session> optionalSession = sessionRepository.findByTokenEquals(token);
+
+         if(optionalSession.isEmpty()) {
+             return false;
+         }
+
+        JwtParser jwtParser = Jwts.parser().verifyWith(secretKey).build();
+         Claims claims = jwtParser.parseSignedClaims(token).getPayload();
+
+        Long exp = (Long)claims.get("exp");
+        System.out.println("exp = "+exp);
+        Date expiryInHumanReadableFormat = new Date(exp);
+
+
+         Date rightNowInHumanReadableFormat = new Date(System.currentTimeMillis());
+         System.out.println("exp = "+expiryInHumanReadableFormat);
+         System.out.println("time right now ="+rightNowInHumanReadableFormat);
+         if(rightNowInHumanReadableFormat.after(expiryInHumanReadableFormat)) {
+            return false;
+        }
+
+        return true;
     }
 }
