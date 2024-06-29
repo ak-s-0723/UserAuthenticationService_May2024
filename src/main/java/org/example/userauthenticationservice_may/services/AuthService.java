@@ -1,5 +1,7 @@
 package org.example.userauthenticationservice_may.services;
 
+import io.jsonwebtoken.Claims;
+import io.jsonwebtoken.JwtParser;
 import io.jsonwebtoken.Jwts;
 import io.jsonwebtoken.security.MacAlgorithm;
 import org.antlr.v4.runtime.misc.Pair;
@@ -31,10 +33,13 @@ public class AuthService implements IAuthService {
 
     private SessionRepository sessionRepository;
 
-    public AuthService(UserRepository userRepository,BCryptPasswordEncoder bCryptPasswordEncoder,SessionRepository sessionRepository) {
+    private SecretKey secretKey;
+
+    public AuthService(UserRepository userRepository,BCryptPasswordEncoder bCryptPasswordEncoder,SessionRepository sessionRepository,SecretKey secretKey) {
         this.userRepository = userRepository;
         this.bCryptPasswordEncoder = bCryptPasswordEncoder;
         this.sessionRepository = sessionRepository;
+        this.secretKey = secretKey;
     }
 
     @Override
@@ -84,11 +89,9 @@ public class AuthService implements IAuthService {
         jwtData.put("email",user.getEmail());
         jwtData.put("roles",user.getRoles());
         Long nowInMillis = System.currentTimeMillis();
-        jwtData.put("iat",new Date(nowInMillis));
-        jwtData.put("exp", new Date(nowInMillis+100000));
+        jwtData.put("iat",nowInMillis);
+        jwtData.put("exp", nowInMillis+1000000);
 
-        MacAlgorithm algorithm = Jwts.SIG.HS256;
-        SecretKey secretKey = algorithm.key().build();
         //String token = Jwts.builder().content(content).signWith(secretKey).compact();
         String token = Jwts.builder().claims(jwtData).signWith(secretKey).compact();
 
@@ -102,5 +105,38 @@ public class AuthService implements IAuthService {
         headers.add(HttpHeaders.SET_COOKIE,token);
 
         return new Pair<User,MultiValueMap<String,String>>(user,headers);
+    }
+
+    public Boolean validateToken(String token,Long userId) {
+       Optional<Session> optionalSession = sessionRepository.findByTokenEquals(token);
+       if(optionalSession.isEmpty()) {
+           return false;
+       }
+
+
+        JwtParser jwtParser = Jwts.parser().verifyWith(secretKey).build();
+        Claims claims = jwtParser.parseSignedClaims(token).getPayload();
+
+        Long expiryInEpoch = (Long)claims.get("exp");
+        Long currentTime = System.currentTimeMillis();
+        System.out.println("current Time" +currentTime);
+        System.out.println("token expiry"+expiryInEpoch);
+
+        if(currentTime > expiryInEpoch) {
+            //Add Logic for turning session status as expired and persist in DB
+            return false;
+        }
+
+        //Just doing for sake of doing , not necessity
+        Optional<User> optionalUser = userRepository.findById(userId);
+        String email = optionalUser.get().getEmail();
+
+        if(!email.equals(claims.get("email"))) {
+            System.out.println("user email"+email);
+            System.out.println("email in claims"+claims.get("email"));
+            return false;
+        }
+
+        return true;
     }
 }

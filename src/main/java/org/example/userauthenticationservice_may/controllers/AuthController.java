@@ -1,6 +1,7 @@
 package org.example.userauthenticationservice_may.controllers;
 
 
+import org.example.userauthenticationservice_may.Exceptions.AuthenticationFailedException;
 import org.example.userauthenticationservice_may.dtos.*;
 import org.example.userauthenticationservice_may.models.User;
 import org.example.userauthenticationservice_may.repositories.UserRepository;
@@ -38,7 +39,7 @@ public class AuthController {
     public ResponseEntity<UserDto> login(@RequestBody LoginRequestDto loginRequestDto) {
         try {
             Pair<User, MultiValueMap<String,String>> response = authService.login(loginRequestDto.getEmail(), loginRequestDto.getPassword());
-            if (response.a == null) {
+            if (response == null) {
                 throw new IllegalArgumentException("Invalid Credentials");
             }
 
@@ -60,8 +61,11 @@ public class AuthController {
 
 
     @PostMapping("/validateToken")
-    public void validateToken(@RequestBody ValidateTokenRequestDto validateTokenRequestDto) {
-
+    public void validateToken(@RequestBody ValidateTokenRequestDto validateTokenRequestDto) throws AuthenticationFailedException {
+      Boolean result = authService.validateToken(validateTokenRequestDto.getToken(), validateTokenRequestDto.getUserId());
+      if(result == false) {
+        throw new AuthenticationFailedException("BAD CREDENTIALS, fool");
+      }
     }
 
     private UserDto from(User user) {
