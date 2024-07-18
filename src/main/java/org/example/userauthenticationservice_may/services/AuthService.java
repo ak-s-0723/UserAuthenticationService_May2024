@@ -1,10 +1,14 @@
 package org.example.userauthenticationservice_may.services;
 
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import io.jsonwebtoken.Claims;
 import io.jsonwebtoken.JwtParser;
 import io.jsonwebtoken.Jwts;
 import io.jsonwebtoken.security.MacAlgorithm;
 import org.antlr.v4.runtime.misc.Pair;
+import org.example.userauthenticationservice_may.clients.KafkaProducerClient;
+import org.example.userauthenticationservice_may.dtos.MessageDto;
 import org.example.userauthenticationservice_may.models.Session;
 import org.example.userauthenticationservice_may.models.SessionStatus;
 import org.example.userauthenticationservice_may.models.User;
@@ -35,11 +39,18 @@ public class AuthService implements IAuthService {
 
     private SecretKey secretKey;
 
-    public AuthService(UserRepository userRepository,BCryptPasswordEncoder bCryptPasswordEncoder,SessionRepository sessionRepository,SecretKey secretKey) {
+    private KafkaProducerClient kafkaProducerClient;
+
+
+    private ObjectMapper objectMapper;
+
+    public AuthService(UserRepository userRepository,BCryptPasswordEncoder bCryptPasswordEncoder,SessionRepository sessionRepository,SecretKey secretKey,KafkaProducerClient kafkaProducerClient,ObjectMapper objectMapper) {
         this.userRepository = userRepository;
         this.bCryptPasswordEncoder = bCryptPasswordEncoder;
         this.sessionRepository = sessionRepository;
         this.secretKey = secretKey;
+        this.kafkaProducerClient = kafkaProducerClient;
+        this.objectMapper = objectMapper;
     }
 
     @Override
@@ -53,6 +64,19 @@ public class AuthService implements IAuthService {
          user.setEmail(email);
          user.setPassword(bCryptPasswordEncoder.encode(password));
          userRepository.save(user);
+
+         //send message now
+        try {
+            MessageDto message = new MessageDto();
+            message.setTo(email);
+            message.setFrom("anuragbatch@gmail.com");
+            message.setSubject("Welcome to Project");
+            message.setBody("Hope you will attend remaining 2 classes as well");
+            kafkaProducerClient.sendMessage("signup", objectMapper.writeValueAsString(message));
+        }catch(JsonProcessingException ex) {
+            System.out.println(ex.getMessage());
+            throw new RuntimeException(ex);
+        }
 
          return user;
     }
@@ -140,3 +164,12 @@ public class AuthService implements IAuthService {
         return true;
     }
 }
+
+
+//EmailService  -> authservice ()
+//              -> orderservice
+//              -> advertisementservice , paymentservice
+//
+//Welcome to scaler
+//
+//welcome to scaler !!!
