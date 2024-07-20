@@ -41,7 +41,6 @@ public class AuthService implements IAuthService {
 
     private KafkaProducerClient kafkaProducerClient;
 
-
     private ObjectMapper objectMapper;
 
     public AuthService(UserRepository userRepository,BCryptPasswordEncoder bCryptPasswordEncoder,SessionRepository sessionRepository,SecretKey secretKey,KafkaProducerClient kafkaProducerClient,ObjectMapper objectMapper) {
